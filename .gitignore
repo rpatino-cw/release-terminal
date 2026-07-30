@@ -22,3 +22,8 @@ node_modules/
 *.log
 .env
 .env.*
+
+# Handout bundle, contains answers.
+fabian-setup.zip
+qr.png
+START-HERE-SHAKIL.md

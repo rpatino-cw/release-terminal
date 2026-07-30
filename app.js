@@ -907,6 +907,12 @@
       sec.appendChild(el('p', 'admin-p', a.premise));
     }
 
+    adminList(sec, 'THE FULL CHAIN', a.chain, function (li, r) { li.textContent = r; });
+
+    if (a.siteRole) sec.appendChild(el('p', 'admin-p admin-note', a.siteRole));
+
+    adminList(sec, 'STATUS', a.status, function (li, r) { li.textContent = r; });
+
     if (a.combo) {
       var box = el('div', 'admin-combo');
       box.appendChild(el('div', 'admin-combo-label', 'LOCKBOX COMBINATION'));
@@ -922,6 +928,8 @@
     });
 
     adminList(sec, 'MATERIALS', a.materials, function (li, r) { li.textContent = r; });
+
+    adminList(sec, 'HANDOUTS TO PLACE', a.handouts, function (li, r) { li.textContent = r; });
 
     adminList(sec, 'SETUP ORDER', a.setup, function (li, r) {
       li.appendChild(el('span', 'admin-k', r.step + '.  ' + r.who));
