@@ -6,8 +6,7 @@ tools/fixture.example.json
 # Printed paper that carries plaintext ANSWERS. For humans, never the repo.
 # CARD.md holds the Vigenere key. The briefs hold the authorization token.
 CARD.md
-BRIEF-FOR-SUPERVISOR.md
-BRIEF-FOR-TEAM.md
+BRIEF-FOR-*.md
 FACTS-TEMPLATE.md
 
 # Internal build notes. Describes the crypto scheme, which is a cheat sheet.

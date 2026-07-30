@@ -507,7 +507,7 @@
       updateHintButton(n, pl);
     });
 
-    if (n === MASTERMIND_STAGE) setupStageFour(n, pl, form, input);
+    if (n === MASTERMIND_STAGE) setupMastermindStage(n, pl, form, input);
     else input.focus({ preventScroll: true });
   }
 
@@ -637,14 +637,14 @@
     return goStage(REVEAL_STAGE);
   }
 
-  /* -------------------------------------------------------- stage 4 hook */
+  /* --------------------------------------------- mastermind stage hook */
 
-  function setupStageFour(n, pl, form, input) {
+  function setupMastermindStage(n, pl, form, input) {
     var digits = earnedDigits(); /* stages 1..3, already solved to be here */
     var secret = digits.join('') + String(pl.digit);
 
     if (typeof window.mountMastermind !== 'function') {
-      console.warn('mountMastermind is not defined. Falling back to the plain text input for stage 4.');
+      console.warn('mountMastermind is not defined. Falling back to the plain text input for the mastermind stage.');
       input.focus({ preventScroll: true });
       return;
     }
@@ -660,6 +660,7 @@
     try {
       window.mountMastermind($('mount'), {
         secret: secret,
+        onWrong: function () { rejectAttempt(n); },
         onSolved: function () {
           if (solvedOnce) return;
           solvedOnce = true;
@@ -670,7 +671,7 @@
              * answer for stage 4, so the final payload key cannot be derived
              * from it. Hand the player back the text input rather than dead end.
              */
-            console.warn('mastermind solved but the assembled code is not an accepted stage 4 answer. Set stage 4 answers[0] to the combo in puzzles.src.json.');
+            console.warn('mastermind solved but the assembled code is not an accepted final stage answer. Set the final stage answers[0] to the combo in puzzles.src.json.');
             solvedOnce = false;
             form.hidden = false;
             var msg = $('reject');
@@ -937,8 +938,6 @@
 
     adminList(sec, 'MATERIALS', a.materials, function (li, r) { li.textContent = r; });
 
-    adminList(sec, 'HANDOUTS TO PLACE', a.handouts, function (li, r) { li.textContent = r; });
-
     adminList(sec, 'SETUP ORDER', a.setup, function (li, r) {
       li.appendChild(el('span', 'admin-k', r.step + '.  ' + r.who));
       li.appendChild(el('span', 'admin-n', r.do));
@@ -958,8 +957,8 @@
       sec.appendChild(el('h3', 'admin-h', title));
       sec.appendChild(el('pre', 'admin-doc', body));
     }
-    doc('PRINT: CIPHER CARD FOR THE Z-BAR BOX', a.cipherCard);
     doc('PRINT: BRIEF FOR JAMES', a.supervisorBrief);
+    doc('PRINT: BRIEF FOR ALEX', a.alexBrief);
     doc('PRINT: BRIEF FOR THE TEAM', a.teamBrief);
 
     if (a.spoilerFree) {

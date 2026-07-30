@@ -1,6 +1,6 @@
-/* mastermind.js - stage 4 widget for ASSET RELEASE TERMINAL.
+/* mastermind.js - final stage widget for ASSET RELEASE TERMINAL.
    Exposes window.mountMastermind(containerEl, opts).
-   opts = { secret: "4831", onSolved: function () {} }
+   opts = { secret: "4831", onSolved: function () {}, onWrong: function (guess) {} }
    No dependencies. No storage. No inline styles.
    Allowed classes only: mm-wrap mm-input mm-btn mm-history mm-row mm-guess mm-score */
 (function () {
@@ -154,6 +154,12 @@
         }
       } else {
         status.textContent = res.exact + ' EXACT / ' + res.close + ' CLOSE';
+        /* A scored miss is a real wrong attempt, so the host can count it the
+           same way it counts a rejected text answer. A malformed entry is not
+           reported here, since it never got as far as being scored. */
+        if (typeof opts.onWrong === 'function') {
+          try { opts.onWrong(digits); } catch (e) { /* host callback is not our problem */ }
+        }
       }
       input.focus();
     }
