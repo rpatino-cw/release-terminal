@@ -687,3 +687,27 @@ body {
   opacity: 0.85;
   font-size: 0.74rem;
 }
+
+.admin-qr {
+  background: #fff;
+  padding: 10px;
+  border-radius: 4px;
+  max-width: 260px;
+  margin: 0.6rem auto;
+}
+
+.admin-qr svg { display: block; width: 100%; height: auto; }
+
+.admin-doc {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.6rem;
+  background: rgba(0, 0, 0, 0.3);
+  overflow-x: auto;
+  margin: 0 0 0.4rem;
+}

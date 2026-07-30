@@ -927,6 +927,14 @@
       if (r.note) li.appendChild(el('span', 'admin-n', r.note));
     });
 
+    if (a.qrSvg) {
+      sec.appendChild(el('h3', 'admin-h', 'QR CODE FOR THE KEY BOX'));
+      var qr = el('div', 'admin-qr');
+      qr.innerHTML = a.qrSvg; /* trusted, generated at build time */
+      sec.appendChild(qr);
+      if (a.qrNote) sec.appendChild(el('p', 'admin-p admin-note', a.qrNote));
+    }
+
     adminList(sec, 'MATERIALS', a.materials, function (li, r) { li.textContent = r; });
 
     adminList(sec, 'HANDOUTS TO PLACE', a.handouts, function (li, r) { li.textContent = r; });
@@ -940,6 +948,19 @@
 
     adminList(sec, 'GROUND RULES', a.rules, function (li, r) { li.textContent = r; });
     adminList(sec, 'FAILSAFES', a.failsafe, function (li, r) { li.textContent = r; });
+
+    /*
+     * The printable handouts live in here so nobody has to be sent files. Open
+     * the dashboard, print or screenshot the block, done.
+     */
+    function doc(title, body) {
+      if (!body) return;
+      sec.appendChild(el('h3', 'admin-h', title));
+      sec.appendChild(el('pre', 'admin-doc', body));
+    }
+    doc('PRINT: CIPHER CARD FOR THE Z-BAR BOX', a.cipherCard);
+    doc('PRINT: BRIEF FOR JAMES', a.supervisorBrief);
+    doc('PRINT: BRIEF FOR THE TEAM', a.teamBrief);
 
     if (a.spoilerFree) {
       sec.appendChild(el('h3', 'admin-h', 'FOR A HELPER WHO WANTS NO SPOILERS'));
