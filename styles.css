@@ -711,3 +711,95 @@ body {
   overflow-x: auto;
   margin: 0 0 0.4rem;
 }
+
+/*
+ * The fixed scanline overlay composites stripes onto the white QR plate and
+ * measurably degrades decoding at 3x device pixel ratio, which is most current
+ * phones. A z-index lift does not help, because .crt establishes its own
+ * stacking context and the overlay is its sibling. The dashboard is an operator
+ * screen rather than part of the CRT fiction, so drop the overlay entirely
+ * while it is open. That leaves the QR plate clean for screenshots and print.
+ */
+body.admin-open .scanlines,
+body.admin-open .vignette {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ print */
+
+/*
+ * The dashboard tells the setup person to print this page. Without these rules
+ * the browser drops the dark background by default and prints light green text
+ * on white, which comes out as blank paper.
+ */
+@media print {
+  .scanlines,
+  .vignette,
+  .ftr,
+  .btn { display: none !important; }
+
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    text-shadow: none !important;
+    font-size: 11pt;
+  }
+
+  body { background-image: none !important; }
+
+  .crt {
+    max-width: none;
+    min-height: 0;
+    padding: 0;
+    gap: 0;
+  }
+
+  .title,
+  .sysline,
+  .admin-title,
+  .admin-h,
+  .admin-p,
+  .admin-item,
+  .admin-doc,
+  .admin-note,
+  .admin-combo-label,
+  .admin-combo-val,
+  .admin-combo-note,
+  .prompt {
+    color: #000 !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+  }
+
+  .admin-warn {
+    color: #000 !important;
+    border: 1pt solid #000;
+    background: none !important;
+  }
+
+  .admin-combo,
+  .admin-doc,
+  .panel,
+  .stage {
+    background: none !important;
+    border: 1pt solid #000;
+  }
+
+  .admin-h { border-bottom: 1pt solid #000; }
+
+  .admin-doc {
+    overflow: visible;
+    white-space: pre-wrap;
+    page-break-inside: avoid;
+  }
+
+  .admin-qr {
+    background: #fff !important;
+    border: 1pt solid #000;
+    page-break-inside: avoid;
+  }
+
+  /* Each printable handout should start on its own sheet so they can be cut
+     apart and handed to different people. */
+  .admin-doc { break-before: page; }
+}

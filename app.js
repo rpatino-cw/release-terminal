@@ -50,16 +50,16 @@
     'ASSET RELEASE TERMINAL v2.7',
     'POST ................ OK',
     'CUSTODY LEDGER ...... MOUNTED',
-    'CABLE LOCK ARRAY .... ENGAGED',
+    'KEY BOX ............. SEALED',
     'KEY VAULT ........... SEALED (4 DIGIT)',
     'OPERATOR CLEARANCE .. NONE',
     '',
-    'ASSET: ONE (1) BACKPACK, HELD UNDER CUSTODY.',
+    'ASSET: ONE (1) KEY BOX, HELD UNDER CUSTODY.',
     'SUBJECT: YOU.',
     '',
     'RELEASE REQUIRES A 4 DIGIT CODE.',
     'FOUR STAGES YIELD ONE DIGIT EACH.',
-    'ONE GATE REQUIRES A SECOND HUMAN.',
+    'TWO GATES REQUIRE ANOTHER HUMAN.',
     'NO SHORTCUTS. NO OVERRIDE.',
     ''
   ];
@@ -707,7 +707,7 @@
       sec.appendChild(el('div', 'reveal-kicker', 'RELEASE AUTHORIZED'));
       sec.appendChild(el('div', 'combo', String(fin.combo || '')));
       sec.appendChild(el('p', 'taunt', String(fin.taunt || '')));
-      sec.appendChild(el('p', 'reveal-note', 'Set the lockbox to that code. The key is inside.'));
+      sec.appendChild(el('p', 'reveal-note', 'Take that code to the key box. What is inside is not the key.'));
       var stats = el('p', 'reveal-note dim', runStats());
       sec.appendChild(stats);
       v.appendChild(sec);
@@ -820,6 +820,7 @@
 
   function openAdmin() {
     adminOpen = true;
+    document.body.classList.add('admin-open');
     var v = view();
     v.innerHTML = '';
     var sec = el('section', 'stage admin-gate');
