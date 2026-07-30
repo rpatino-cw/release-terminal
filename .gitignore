@@ -1,0 +1,24 @@
+# Secrets. Never commit these.
+puzzles.src.json
+COMBO.txt
+tools/fixture.example.json
+
+# Printed paper that carries plaintext ANSWERS. For humans, never the repo.
+# CARD.md holds the Vigenere key. The briefs hold the authorization token.
+CARD.md
+BRIEF-FOR-SUPERVISOR.md
+BRIEF-FOR-TEAM.md
+FACTS-TEMPLATE.md
+
+# Internal build notes. Describes the crypto scheme, which is a cheat sheet.
+CONTRACT.md
+
+# Local artifact, printed not served.
+qr.svg
+
+# OS and tooling noise
+.DS_Store
+node_modules/
+*.log
+.env
+.env.*
