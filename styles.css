@@ -18,6 +18,15 @@
 
 * { box-sizing: border-box; }
 
+/*
+ * The hidden attribute has to beat class level display rules. A class selector
+ * outranks the user agent [hidden] rule, so anything given display by a class
+ * stays on screen after element.hidden = true. That silently defeated three
+ * hide calls, including the fallback answer form on the keypad stage, which
+ * left a second input on screen and let a player bypass the keypad entirely.
+ */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -160,8 +169,6 @@ body {
   color: var(--warn);
   text-shadow: none;
 }
-
-.railnote[hidden] { display: none; }
 
 /* ---------------------------------------------------------------- panels */
 
