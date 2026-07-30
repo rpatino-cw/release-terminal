@@ -16,7 +16,17 @@
   var PBKDF2_ITERS = 150000;
   var GATE_COUNT = 5;        /* gated stages: 1..5 */
   var DIGIT_SLOTS = 4;       /* rail slots. Stage 5 is gate-only and adds none. */
-  var MASTERMIND_STAGE = 4;  /* the widget mounts here and nowhere else */
+  var MASTERMIND_STAGE = 5;  /* the widget mounts here and nowhere else */
+  var MUTE_KEY = 'release-terminal-muted';
+
+  /*
+   * Audio is optional and must never be load bearing. If audio.js is missing or
+   * the browser refuses to give us a context, every call here is a no-op and the
+   * puzzle behaves exactly as it did before.
+   */
+  function sfx(name) {
+    if (window.SOUND && typeof window.SOUND.sfx === 'function') window.SOUND.sfx(name);
+  }
   var REVEAL_STAGE = GATE_COUNT + 1;
   var RESET_TAPS = 5;
   var RESET_WINDOW_MS = 3000;
@@ -49,7 +59,7 @@
     '',
     'RELEASE REQUIRES A 4 DIGIT CODE.',
     'FOUR STAGES YIELD ONE DIGIT EACH.',
-    'A FIFTH GATE REQUIRES HUMAN AUTHORIZATION.',
+    'ONE GATE REQUIRES A SECOND HUMAN.',
     'NO SHORTCUTS. NO OVERRIDE.',
     ''
   ];
@@ -279,9 +289,43 @@
       var timer = null;
       var fast = reducedMotion();
 
+      var card = el('div', 'profile');
+      card.hidden = true;
+      v.insertBefore(card, cta);
+
+      /*
+       * The profile card ships encrypted under the same literal 'boot' key as
+       * stage 1, so it renders for every visitor. The encryption is not a puzzle
+       * gate, it is there so a crawler fetching puzzles.js gets base64 instead of
+       * a real person's name, job title, city, and portrait.
+       */
+      function showProfile() {
+        if (!P.bootPayload || !P.bootIv || card.dataset.done) return;
+        card.dataset.done = '1';
+        decryptPayload(P.bootPayload, P.bootIv, 'boot').then(function (p) {
+          card.innerHTML = '';
+          card.appendChild(el('div', 'profile-tag', 'PERSONNEL RECORD // ARCHIVO DE PERSONAL'));
+          var art = el('pre', 'portrait', p.ascii || '');
+          art.setAttribute('aria-label', 'ASCII portrait of ' + (p.name || 'the subject'));
+          card.appendChild(art);
+          card.appendChild(el('div', 'profile-name', p.name || ''));
+          card.appendChild(el('div', 'profile-title', p.title || ''));
+          card.appendChild(el('div', 'profile-origin', p.origin || ''));
+          if (p.lines && p.lines.length) {
+            var f = el('pre', 'profile-lines', p.lines.join('\n'));
+            card.appendChild(f);
+          }
+          if (p.footer) card.appendChild(el('div', 'profile-footer', p.footer));
+          card.hidden = false;
+        }).catch(function (err) {
+          console.warn('profile card unavailable', err);
+        });
+      }
+
       function finishPrinting() {
         if (timer) { clearTimeout(timer); timer = null; }
         pre.textContent = BOOT_LINES.join('\n');
+        showProfile();
         cta.hidden = false;
       }
 
@@ -295,9 +339,12 @@
       function skipOrBegin(ev) {
         if (done) return;
         if (ev && ev.target && ev.target.id === 'mercy') return;
+        if (ev && ev.target && ev.target.id === 'mute') return;
         if (cta.hidden) { finishPrinting(); return; }
         done = true;
         document.removeEventListener('click', skipOrBegin, true);
+        /* This is the real user gesture, so it is the only place audio can start. */
+        if (window.SOUND && !window.SOUND.isMuted()) window.SOUND.unlock();
         resolve();
       }
 
@@ -355,8 +402,16 @@
    * The gate-only stage depends on another human being reachable, so MERCY
    * stops being a footnote there and becomes a primary control.
    */
+  /*
+   * A gate-only stage is identified by its payload carrying digit null, not by
+   * its position. It can sit anywhere in the run.
+   */
+  function isGateStage(n) {
+    return !!(payloads[n] && payloads[n].digit == null);
+  }
+
   function setFooterMode(n) {
-    var gate = (n === GATE_COUNT);
+    var gate = isGateStage(n);
     document.body.classList.toggle('gate-stage', gate);
     var note = $('ftrnote');
     if (note) {
@@ -369,7 +424,7 @@
   function renderStage(n, pl) {
     stopHintTimer();
     setSysline('STAGE ' + n + ' OF ' + GATE_COUNT +
-      (n === GATE_COUNT ? ' // STATUS: AWAITING AUTHORIZATION' : ' // STATUS: LOCKED'));
+      (pl.digit == null ? ' // STATUS: AWAITING AUTHORIZATION' : ' // STATUS: LOCKED'));
     setFooterMode(n);
 
     var v = view();
@@ -446,6 +501,7 @@
       var used = S.hints[n] || 0;
       if (used >= (pl.hints || []).length) return;
       S.hints[n] = used + 1;
+      sfx('hint');
       saveState();
       renderHints(n, pl);
       updateHintButton(n, pl);
@@ -548,6 +604,7 @@
 
   function rejectAttempt(n) {
     S.attempts[n] = (S.attempts[n] || 0) + 1;
+    sfx('wrong');
     saveState();
     renderAttempts(n);
     var msg = $('reject');
@@ -565,6 +622,17 @@
     S.answers[n - 1] = canon; /* canonical form, so the key chain is alias proof */
     saveState();
     stopHintTimer();
+    /*
+     * A gate-only stage clears with the authorization cue. A digit stage gets
+     * the correct chime plus a second, shorter cue as the digit lands on the
+     * rail. The last stage is silent here because renderReveal fires its own.
+     */
+    if (pl && pl.digit == null) {
+      sfx('auth');
+    } else if (n < GATE_COUNT) {
+      sfx('correct');
+      setTimeout(function () { sfx('digit'); }, 380);
+    }
     if (n < GATE_COUNT) return goStage(n + 1);
     return goStage(REVEAL_STAGE);
   }
@@ -629,6 +697,7 @@
       return Promise.resolve();
     }
     return decryptPayload(P.finalPayload, P.finalIv, km).then(function (fin) {
+      sfx('reveal');
       setSysline('CUSTODY RELEASED // STATUS: OPEN');
       setFooterMode(REVEAL_STAGE);
       var v = view();
@@ -717,6 +786,30 @@
   function wireFooter() {
     var m = $('mercy');
     if (m) m.setAttribute('href', MERCY_SMS);
+
+    var mute = $('mute');
+    if (!mute) return;
+    if (!window.SOUND || !window.SOUND.available()) { mute.hidden = true; return; }
+
+    var saved = false;
+    try { saved = window.localStorage.getItem(MUTE_KEY) === '1'; } catch (e) {}
+    applyMute(saved);
+
+    mute.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      var next = !window.SOUND.isMuted();
+      applyMute(next);
+      try { window.localStorage.setItem(MUTE_KEY, next ? '1' : '0'); } catch (e) {}
+      /* Unmuting is itself a gesture, so it can start audio mid run. */
+      if (!next) window.SOUND.unlock();
+    });
+
+    function applyMute(m2) {
+      window.SOUND.setMuted(m2);
+      mute.textContent = m2 ? 'SOUND OFF' : 'SOUND ON';
+      mute.setAttribute('aria-pressed', m2 ? 'true' : 'false');
+    }
   }
 
   function replay() {

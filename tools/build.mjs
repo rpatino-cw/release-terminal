@@ -142,10 +142,15 @@ if (nullAt.length !== 1) {
     (nullAt.length ? ' at stage(s) ' + nullAt.join(', ') : '') + '.'
   );
 }
-if (nullAt[0] !== GATE_COUNT) {
+/*
+ * The gate-only stage may sit anywhere in the run. It must not be last, because
+ * the final stage's answer is the key that unwraps the reveal payload, and the
+ * run should end on a digit stage rather than on a human authorization step.
+ */
+if (nullAt[0] === GATE_COUNT) {
   die(
-    'the gate-only stage (digit: null) must be the last one, stage ' + GATE_COUNT +
-    '. Found it at stage ' + nullAt[0] + '.'
+    'the gate-only stage (digit: null) must not be the last stage. Move it earlier ' +
+    'so the run ends on a digit stage.'
   );
 }
 
@@ -258,7 +263,7 @@ function buildOnce() {
     };
   });
 
-  /* The reveal is keyed off the LAST gated stage, which is the gate-only one. */
+  /* The reveal is keyed off the LAST gated stage. */
   const finalEnc = encrypt(
     { combo: combo, taunt: taunt },
     normalize(stages[GATE_COUNT - 1].answers[0]),
@@ -271,6 +276,18 @@ function buildOnce() {
     finalPayload: finalEnc.payload,
     finalIv: finalEnc.iv
   };
+
+  /*
+   * The boot-screen profile card. Keyed off the literal 'boot' like stage 1, so
+   * it renders for anyone who opens the page. It is encrypted anyway so that a
+   * crawler fetching this file sees base64 rather than a named person, a job
+   * title, a city, and a face.
+   */
+  if (src.profile) {
+    const profEnc = encrypt(src.profile, 'boot', saltBuf);
+    body.bootPayload = profEnc.payload;
+    body.bootIv = profEnc.iv;
+  }
 
   const text =
     '/* GENERATED FILE. Do not edit by hand.\n' +

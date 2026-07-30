@@ -488,3 +488,81 @@ body {
   outline: 2px solid var(--ink-bright);
   outline-offset: 2px;
 }
+
+/* ------------------------------------------------- boot profile card */
+
+.profile {
+  margin: 1.1rem 0 0.4rem;
+  padding: 0.9rem 0.7rem 1rem;
+  border: 1px solid var(--line, #1d5f38);
+  border-radius: 4px;
+  background: rgba(6, 26, 15, 0.55);
+  text-align: center;
+}
+
+.profile-tag {
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  opacity: 0.65;
+  margin-bottom: 0.6rem;
+}
+
+/* The portrait is a fixed 52 column grid. Scale it to the viewport with vw so
+   it never wraps and never forces the page to scroll sideways. */
+.portrait {
+  display: block;
+  margin: 0 auto 0.7rem;
+  font-family: inherit;
+  font-size: clamp(6px, 2.55vw, 13px);
+  line-height: 1.0;
+  white-space: pre;
+  overflow: hidden;
+  text-shadow: 0 0 4px rgba(125, 250, 168, 0.35);
+  color: var(--fg, #7dfaa8);
+}
+
+.profile-name {
+  font-size: 1.02rem;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 8px rgba(125, 250, 168, 0.5);
+}
+
+.profile-title,
+.profile-origin {
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  opacity: 0.8;
+}
+
+.profile-origin { margin-bottom: 0.7rem; }
+
+.profile-lines {
+  font-family: inherit;
+  font-size: 0.64rem;
+  line-height: 1.5;
+  letter-spacing: 0.05em;
+  opacity: 0.72;
+  white-space: pre;
+  margin: 0 0 0.6rem;
+  text-align: left;
+  display: inline-block;
+}
+
+.profile-footer {
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  opacity: 0.9;
+}
+
+/* ------------------------------------------------------- mute control */
+
+.btn.mute {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  padding: 0.35rem 0.5rem;
+  opacity: 0.75;
+  background: transparent;
+  cursor: pointer;
+}
+
+.btn.mute:hover { opacity: 1; }
