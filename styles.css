@@ -680,3 +680,10 @@ body {
   opacity: 0.7;
   line-height: 1.45;
 }
+
+.admin-note {
+  border-left: 2px solid var(--ink);
+  padding-left: 0.6rem;
+  opacity: 0.85;
+  font-size: 0.74rem;
+}

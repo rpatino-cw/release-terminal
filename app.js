@@ -921,12 +921,14 @@
       if (r.note) li.appendChild(el('span', 'admin-n', r.note));
     });
 
-    adminList(sec, 'BUY THIS', a.buy, function (li, r) { li.textContent = r; });
+    adminList(sec, 'MATERIALS', a.materials, function (li, r) { li.textContent = r; });
 
     adminList(sec, 'SETUP ORDER', a.setup, function (li, r) {
       li.appendChild(el('span', 'admin-k', r.step + '.  ' + r.who));
       li.appendChild(el('span', 'admin-n', r.do));
     });
+
+    if (a.setupNote) sec.appendChild(el('p', 'admin-p admin-note', a.setupNote));
 
     adminList(sec, 'GROUND RULES', a.rules, function (li, r) { li.textContent = r; });
     adminList(sec, 'FAILSAFES', a.failsafe, function (li, r) { li.textContent = r; });
