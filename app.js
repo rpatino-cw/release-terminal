@@ -112,7 +112,7 @@
     return crypto.subtle.digest('SHA-256', utf8(str)).then(hex);
   }
 
-  function deriveKey(keyMaterial) {
+  function deriveKey(keyMaterial, iters) {
     return crypto.subtle
       .importKey('raw', utf8(keyMaterial), 'PBKDF2', false, ['deriveKey'])
       .then(function (base) {
@@ -120,7 +120,7 @@
           {
             name: 'PBKDF2',
             salt: SALT_BYTES,
-            iterations: PBKDF2_ITERS,
+            iterations: iters || PBKDF2_ITERS,
             hash: 'SHA-256'
           },
           base,
@@ -133,8 +133,8 @@
 
   /* payload is base64(ciphertext || 16 byte auth tag), which is exactly the
      layout AES-GCM in Web Crypto expects. */
-  function decryptPayload(payloadB64, ivB64, keyMaterial) {
-    return deriveKey(keyMaterial).then(function (key) {
+  function decryptPayload(payloadB64, ivB64, keyMaterial, iters) {
+    return deriveKey(keyMaterial, iters).then(function (key) {
       return crypto.subtle.decrypt(
         { name: 'AES-GCM', iv: bytesFromB64(ivB64), tagLength: 128 },
         key,
@@ -337,9 +337,9 @@
       }
 
       function skipOrBegin(ev) {
-        if (done) return;
+        if (done || adminOpen) return;
         if (ev && ev.target && ev.target.id === 'mercy') return;
-        if (ev && ev.target && ev.target.id === 'mute') return;
+        if (ev && ev.target && (ev.target.id === 'mute' || ev.target.id === 'adminbtn')) return;
         if (cta.hidden) { finishPrinting(); return; }
         done = true;
         document.removeEventListener('click', skipOrBegin, true);
@@ -783,9 +783,182 @@
 
   /* ----------------------------------------------------------------- boot */
 
+  /* ------------------------------------------------------------- admin */
+
+  /*
+   * Operator dashboard. Encrypted under a 4 digit PIN, which is the weakest key
+   * in the file, so the build raises the PBKDF2 iteration count for this payload
+   * specifically and we add an escalating lockout on wrong entries. That stops a
+   * curious person poking at it. It does not stop a determined scripted attack,
+   * and nothing here pretends otherwise.
+   */
+  var ADMIN_LOCK_KEY = 'release-terminal-admin-lock';
+
+  /*
+   * The boot screen listens for clicks at the document level to skip the
+   * typewriter, so while the admin panel is open that listener has to stand
+   * down or every click in here would start the run underneath us.
+   */
+  var adminOpen = false;
+
+  /* Reload rather than re-render, so the run resumes from saved state cleanly. */
+  function leaveAdmin() { window.location.reload(); }
+
+  function adminLockState() {
+    try {
+      var o = JSON.parse(window.localStorage.getItem(ADMIN_LOCK_KEY) || '{}');
+      return { fails: o.fails || 0, until: o.until || 0 };
+    } catch (e) { return { fails: 0, until: 0 }; }
+  }
+
+  function setAdminLock(fails, until) {
+    try {
+      window.localStorage.setItem(ADMIN_LOCK_KEY, JSON.stringify({ fails: fails, until: until }));
+    } catch (e) {}
+  }
+
+  function openAdmin() {
+    adminOpen = true;
+    var v = view();
+    v.innerHTML = '';
+    var sec = el('section', 'stage admin-gate');
+    sec.appendChild(el('div', 'stage-tag', 'RESTRICTED // OPERATOR ACCESS'));
+    sec.appendChild(el('p', 'panel-body', 'This panel is for the people setting the game up. It contains every answer. Enter the operator PIN.'));
+
+    var form = el('form', 'answer');
+    var input = el('input', 'ans-input');
+    input.type = 'text';
+    input.id = 'adminpin';
+    input.setAttribute('inputmode', 'numeric');
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('placeholder', 'operator PIN');
+    input.setAttribute('aria-label', 'Operator PIN');
+    var go = el('button', 'btn wide', 'UNLOCK');
+    go.type = 'submit';
+    form.appendChild(input);
+    form.appendChild(go);
+    sec.appendChild(form);
+
+    var msg = el('div', 'reject', '');
+    msg.id = 'adminmsg';
+    sec.appendChild(msg);
+
+    var back = el('button', 'btn wide ghost', 'BACK TO THE TERMINAL');
+    back.type = 'button';
+    back.addEventListener('click', function () { leaveAdmin(); });
+    sec.appendChild(back);
+
+    v.appendChild(sec);
+    setSysline('OPERATOR ACCESS // RESTRICTED');
+    input.focus();
+
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var lock = adminLockState();
+      var now = Date.now();
+      if (lock.until > now) {
+        msg.textContent = 'LOCKED OUT. WAIT ' + Math.ceil((lock.until - now) / 1000) + 'S.';
+        return;
+      }
+      var pin = normalize(input.value);
+      if (!pin) return;
+      msg.textContent = 'DERIVING KEY ...';
+      decryptPayload(P.adminPayload, P.adminIv, 'admin:' + pin, P.adminIters)
+        .then(function (data) {
+          setAdminLock(0, 0);
+          renderAdmin(data);
+        })
+        .catch(function () {
+          var fails = lock.fails + 1;
+          /* 5 free tries, then the wait doubles each time up to a minute. */
+          var wait = fails <= 5 ? 0 : Math.min(60000, 1000 * Math.pow(2, fails - 5));
+          setAdminLock(fails, wait ? Date.now() + wait : 0);
+          sfx('wrong');
+          msg.textContent = wait
+            ? 'DENIED. LOCKED FOR ' + Math.round(wait / 1000) + 'S.'
+            : 'DENIED.';
+          input.select();
+        });
+    });
+  }
+
+  function adminList(parent, title, rows, render) {
+    if (!rows || !rows.length) return;
+    parent.appendChild(el('h3', 'admin-h', title));
+    var ul = el('ul', 'admin-list');
+    rows.forEach(function (r) {
+      var li = el('li', 'admin-item');
+      render(li, r);
+      ul.appendChild(li);
+    });
+    parent.appendChild(ul);
+  }
+
+  function renderAdmin(a) {
+    var v = view();
+    v.innerHTML = '';
+    setSysline('OPERATOR ACCESS // GRANTED');
+
+    var sec = el('section', 'stage admin');
+    sec.appendChild(el('h2', 'admin-title', a.title || 'OPERATOR DASHBOARD'));
+    if (a.warning) sec.appendChild(el('p', 'admin-warn', a.warning));
+    if (a.premise) {
+      sec.appendChild(el('h3', 'admin-h', 'THE GAME'));
+      sec.appendChild(el('p', 'admin-p', a.premise));
+    }
+
+    if (a.combo) {
+      var box = el('div', 'admin-combo');
+      box.appendChild(el('div', 'admin-combo-label', 'LOCKBOX COMBINATION'));
+      box.appendChild(el('div', 'admin-combo-val', a.combo));
+      if (a.comboNote) box.appendChild(el('div', 'admin-combo-note', a.comboNote));
+      sec.appendChild(box);
+    }
+
+    adminList(sec, 'ANSWER KEY', a.answerKey, function (li, r) {
+      li.appendChild(el('span', 'admin-k', r.stage));
+      li.appendChild(el('span', 'admin-a', r.answer + (r.digit && r.digit !== 'none' ? '  ->  digit ' + r.digit : '  ->  no digit')));
+      if (r.note) li.appendChild(el('span', 'admin-n', r.note));
+    });
+
+    adminList(sec, 'BUY THIS', a.buy, function (li, r) { li.textContent = r; });
+
+    adminList(sec, 'SETUP ORDER', a.setup, function (li, r) {
+      li.appendChild(el('span', 'admin-k', r.step + '.  ' + r.who));
+      li.appendChild(el('span', 'admin-n', r.do));
+    });
+
+    adminList(sec, 'GROUND RULES', a.rules, function (li, r) { li.textContent = r; });
+    adminList(sec, 'FAILSAFES', a.failsafe, function (li, r) { li.textContent = r; });
+
+    if (a.spoilerFree) {
+      sec.appendChild(el('h3', 'admin-h', 'FOR A HELPER WHO WANTS NO SPOILERS'));
+      sec.appendChild(el('p', 'admin-p', a.spoilerFree));
+    }
+
+    var back = el('button', 'btn wide ghost', 'BACK TO THE TERMINAL');
+    back.type = 'button';
+    back.addEventListener('click', function () { leaveAdmin(); });
+    sec.appendChild(back);
+
+    v.appendChild(sec);
+    v.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }
+
   function wireFooter() {
     var m = $('mercy');
     if (m) m.setAttribute('href', MERCY_SMS);
+
+    var ab = $('adminbtn');
+    if (ab) {
+      if (!P.adminPayload) ab.hidden = true;
+      else ab.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openAdmin();
+      });
+    }
 
     var mute = $('mute');
     if (!mute) return;

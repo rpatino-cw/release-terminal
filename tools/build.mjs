@@ -22,6 +22,8 @@ const GATE_COUNT = 5;   /* gated stages in the array. The reveal is generated. *
 const DIGIT_COUNT = 4;  /* stages that carry a digit. The last stage carries none. */
 
 const PBKDF2_ITERS = 150000;
+/* Admin PIN space is only 10,000, so each candidate is made deliberately slow. */
+const ADMIN_ITERS = 1200000;
 const KEY_LEN = 32;
 const SALT_LEN = 16;
 const IV_LEN = 12;
@@ -46,8 +48,8 @@ function sha256Hex(str) {
   return createHash('sha256').update(str, 'utf8').digest('hex');
 }
 
-function encrypt(obj, keyMaterial, saltBuf) {
-  const key = pbkdf2Sync(keyMaterial, saltBuf, PBKDF2_ITERS, KEY_LEN, 'sha256');
+function encrypt(obj, keyMaterial, saltBuf, iters) {
+  const key = pbkdf2Sync(keyMaterial, saltBuf, iters || PBKDF2_ITERS, KEY_LEN, 'sha256');
   const iv = randomBytes(IV_LEN);
   const cipher = createCipheriv('aes-256-gcm', key, iv);
   const body = Buffer.concat([
@@ -287,6 +289,21 @@ function buildOnce() {
     const profEnc = encrypt(src.profile, 'boot', saltBuf);
     body.bootPayload = profEnc.payload;
     body.bootIv = profEnc.iv;
+  }
+
+  /*
+   * The admin dashboard. This is the one payload whose key is a short PIN, so
+   * it is the weakest thing in the file: 10,000 candidates is a small search.
+   * The iteration count is raised well above the puzzle stages to make each
+   * candidate expensive, which turns a two second script into a long one. It
+   * is a speed bump, not a vault. Anything truly sensitive does not belong here.
+   */
+  if (src.admin && src.adminPin) {
+    const pin = String(src.adminPin);
+    const adminEnc = encrypt(src.admin, 'admin:' + pin, saltBuf, ADMIN_ITERS);
+    body.adminPayload = adminEnc.payload;
+    body.adminIv = adminEnc.iv;
+    body.adminIters = ADMIN_ITERS;
   }
 
   const text =
